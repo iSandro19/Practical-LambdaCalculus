@@ -19,6 +19,13 @@
 %token SND
 %token BOOL
 %token NAT
+%token CONS
+%token ISNIL
+%token NIL
+%token HEAD
+%token TAIL
+%token LIST
+%token UNIT
 
 %token LPAREN
 %token RPAREN
@@ -80,6 +87,14 @@ appTerm :
       { TmIsZero $2 }
   | CONCAT atomicTerm atomicTerm
       { TmConcat ($2, $3) }
+/*  | CONS LSQUARE ty RSQUARE atomicTerm atomicTerm
+      { TmCons ($3, $5, $6) }
+  | ISNIL LSQUARE ty RSQUARE atomicTerm
+      { TmIsNil ($3, $5) }
+  | HEAD LSQUARE ty RSQUARE atomicTerm
+      { TmHead ($3, $5) }
+  | TAIL LSQUARE ty RSQUARE atomicTerm
+      { TmTail ($3, $5) } */
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
@@ -103,6 +118,10 @@ atomicTerm :
       { TmTuple $2 }
   | LCURLY recordFields RCURLY
   	  { TmRecord $2 }
+/*  | LSQUARE listFields RSQUARE
+        { TmList $2 }
+  | NIL LSQUARE ty RSQUARE
+      { TmNil $3 } */
 
 tupleFields :
     term
@@ -113,7 +132,7 @@ tupleFields :
 recordFields :
     /* Empty */
       { [] }
-    | notEmptyRecordFields
+  | notEmptyRecordFields
     	{ $1 }    	
 
 notEmptyRecordFields :
@@ -125,6 +144,19 @@ notEmptyRecordFields :
 notEmptyRecordField :
     STRINGV EQ term
       { ($1, $3) }
+/*
+listFields :
+    // Empty
+      { [] }
+  | notEmptyListFields
+      { $1 }
+
+notEmptyListFields :
+    term
+      { [$1] }
+  | term COMMA notEmptyListFields
+      { $1 :: $3 }
+*/
 
 ty :
     atomicTy
@@ -139,3 +171,9 @@ atomicTy :
       { TyBool }
   | NAT
       { TyNat }
+  | STRING
+      { TyString }
+  | UNIT
+        { TyUnit }
+/*  | LIST LSQUARE ty RSQUARE
+      { TyList $3 } */

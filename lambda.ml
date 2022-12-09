@@ -7,6 +7,8 @@ type ty =
   | TyString
   | TyTuple of ty list
   | TyRecord  of (string * ty) list
+(*  | TyList of ty *)
+  | TyUnit
 ;;
 
 type term =
@@ -27,10 +29,17 @@ type term =
   | TmTuple of term list
   | TmRecord of (string * term) list
   | TmProj of term * string
+(*  | TmNil of ty
+  | TmCons of ty * term * term
+  | TmIsNil of ty * term
+  | TmHead of ty * term
+  | TmTail of ty * term *)
+  | TmUnit
+(*  | TmList of term list *)
 ;;
 
 type 'a context =
-  (string * 'a) list  (*convertimos ty a polimorfico para que pueda almacenar varos tipos*)
+  (string * 'a) list  (* convertimos ty a polimorfico para que pueda almacenar varos tipos *)
 ;;
 
 type command =
@@ -66,6 +75,10 @@ let rec string_of_ty ty = match ty with (*Para declarar tipos nuevos*)
       "{" ^ String.concat " * " (List.map string_of_ty tys) ^ "}"
   | TyRecord fields ->
       "{" ^ String.concat ", " (List.map (fun (l, ty) -> l ^ ":" ^ string_of_ty ty) fields) ^ "}"
+  | TyUnit ->
+      "Unit"
+(*  | TyList ty ->
+      "[" ^ string_of_ty ty ^ "]" *)
 ;;
 
 exception Type_error of string
@@ -174,6 +187,43 @@ let rec typeof tctx tm = match tm with (* Reglas de tipado *)
         (try List.nth fieldtys (int_of_string s - 1) with
           _ -> raise (Type_error ("label " ^ s ^ " not found ")))
       | _ -> raise (Type_error "tuple or record type expected"))
+
+(*    (* T-Nil *)
+  | TmNil tyT ->
+      TyList tyT
+
+    (* T-Cons *)
+  | TmCons (tyT, t1, t2) ->
+      if typeof tctx t1 = tyT then
+        if typeof tctx t2 = TyList tyT then TyList tyT
+        else raise (Type_error "second argument of cons is not a list")
+      else raise (Type_error "first argument of cons does not have this list's element type")
+
+    (* T-IsNil *)
+  | TmIsNil (tyT, t1) ->
+      if typeof tctx t1 = TyList tyT then TyBool
+      else raise (Type_error "argument of isnil is not a list")
+
+    (* T-Head *)
+  | TmHead (tyT, t1) ->
+      if typeof tctx t1 = TyList tyT then tyT
+      else raise (Type_error "argument of head is not a list")
+
+    (* T-Tail *)
+  | TmTail (tyT, t1) ->
+      if typeof tctx t1 = TyList tyT then TyList tyT
+      else raise (Type_error "argument of tail is not a list")
+
+    (* T-List *)
+  | TmList field ->
+      let tyT = typeof tctx (List.hd field) in
+      List.iter (fun t -> if typeof tctx t <> tyT then raise (Type_error "elements of list have different types")) field;
+      TyList tyT
+*)
+    (* T-Unit *)
+  | TmUnit ->
+      TyUnit
+
 ;;
 
 (* TERMS MANAGEMENT (EVALUATION) *)
@@ -197,6 +247,8 @@ let rec free_vars tm = match tm with
       lunion (lunion (free_vars t1) (free_vars t2)) (free_vars t3)
   | TmZero ->
       []
+  | TmUnit ->
+    []
   | TmSucc t ->
       free_vars t
   | TmPred t ->
@@ -223,6 +275,18 @@ let rec free_vars tm = match tm with
     List.fold_left (fun fv (lb, ti) -> lunion (free_vars ti) fv) [] fields
   | TmProj (t, lb) ->
     free_vars t
+(*  | TmNil tyT ->
+    []
+  | TmCons (tyT, t1, t2) ->
+    lunion (free_vars t1) (free_vars t2)
+  | TmIsNil (tyT, t1) ->
+    free_vars t1
+  | TmHead (tyT, t1) ->
+    free_vars t1
+  | TmTail (tyT, t1) ->
+    free_vars t1
+  | TmList fields ->
+    List.fold_left (fun fv ti -> lunion (free_vars ti) fv) [] fields *)
 ;;
 
 let rec fresh_name x l =
@@ -274,6 +338,20 @@ let rec subst x s tm = match tm with
       TmRecord (List.map (fun (lb, ti) -> (lb, subst x s ti)) fields)
   | TmProj (t, lb) ->
       TmProj (subst x s t, lb)
+(*  | TmNil tyT ->
+      TmNil tyT
+  | TmCons (tyT, t1, t2) ->
+      TmCons (tyT, subst x s t1, subst x s t2)
+  | TmIsNil (tyT, t1) ->
+      TmIsNil (tyT, subst x s t1)
+  | TmHead (tyT, t1) ->
+      TmHead (tyT, subst x s t1)
+  | TmTail (tyT, t1) ->
+      TmTail (tyT, subst x s t1)
+  | TmList fields ->
+      TmList (List.map (fun ti -> subst x s ti) fields) *)
+  | TmUnit ->
+    TmUnit
 ;;
 
 let rec isnumericval tm = match tm with
@@ -286,6 +364,10 @@ let rec isval tm = match tm with
     TmTrue  -> true
   | TmFalse -> true
   | TmAbs _ -> true
+  | TmString _ -> true
+  | TmTuple fields -> List.for_all (fun ti -> isval ti) fields
+  | TmRecord fields -> List.for_all (fun (lb, ti) -> isval ti) fields
+  | TmUnit -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -427,6 +509,8 @@ let rec string_of_term = function
       "true"
   | TmFalse ->
       "false"
+  | TmUnit ->
+    "unit"
   | TmIf (t1,t2,t3) ->
       "if " ^ "(" ^ string_of_term t1 ^ ")" ^
       " then " ^ "(" ^ string_of_term t2 ^ ")" ^
@@ -452,15 +536,15 @@ let rec string_of_term = function
   | TmLetIn (s, t1, t2) ->
       "let " ^ s ^ " = " ^ string_of_term t1 ^ " in " ^ string_of_term t2
   | TmFix t ->
-    "(fix " ^ string_of_term t ^ ")"
+      "(fix " ^ string_of_term t ^ ")"
   | TmString s ->
-    "\"" ^ s ^ "\""
+      "\"" ^ s ^ "\""
   | TmConcat (t1, t2) ->
-    "concat " ^ "(" ^ string_of_term t1 ^ ", " ^ string_of_term t2 ^ ")"
+      "concat " ^ "(" ^ string_of_term t1 ^ ", " ^ string_of_term t2 ^ ")"
   | TmTuple fields ->
-    "{" ^ String.concat ", " (List.map string_of_term fields) ^ "}"
+      "{" ^ String.concat ", " (List.map string_of_term fields) ^ "}"
   | TmRecord fields ->
-    "{" ^ String.concat ", " (List.map (fun (s, t) -> s ^ "=" ^ string_of_term t) fields) ^ "}"
+      "{" ^ String.concat ", " (List.map (fun (s, t) -> s ^ "=" ^ string_of_term t) fields) ^ "}"
   | TmProj (t, s) ->
     match t with
       TmTuple fields ->
@@ -469,6 +553,8 @@ let rec string_of_term = function
         string_of_term (List.assoc s fields)
     | var -> 
         string_of_term var
+(*  | TmList fields ->
+    "[" ^ String.concat ", " (List.map string_of_term fields) ^ "]" *)
 ;;
 
 let execute (vctx, tctx) = function

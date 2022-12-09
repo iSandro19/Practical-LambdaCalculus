@@ -21,6 +21,7 @@ rule token = parse
   | "concat"    { CONCAT }
   | "fst"       { FST }
   | "snd"       { SND }
+  | "Unit"      { UNIT }
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
   | '('         { LPAREN }
