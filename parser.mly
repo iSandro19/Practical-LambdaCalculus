@@ -15,15 +15,16 @@
 %token LETREC
 %token IN
 %token CONCAT
-%token FST
-%token SND
-%token BOOL
-%token NAT
+%token NIL
 %token CONS
 %token ISNIL
-%token NIL
 %token HEAD
 %token TAIL
+%token UNITV
+
+%token BOOL
+%token NAT
+%token STRING
 %token LIST
 %token UNIT
 
@@ -42,7 +43,7 @@
 %token EOF
 
 %token <int> INTV
-%token <string> STRING
+%token <string> STRV
 %token <string> STRINGV
 
 %start s
@@ -67,36 +68,36 @@ term :
       { TmLetIn ($2, $4, $6) }
   | LETREC STRINGV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix (TmAbs ($2, $4, $6)), $8) }
-  | FST term
-  	  { TmProj ($2, "1") }
-  | SND term
-      { TmProj ($2, "2") }
-  | term DOT STRINGV
-      { TmProj ($1, $3) }
-  | term DOT INTV
-      { TmProj ($1, string_of_int $3) }
 
 appTerm :
-    atomicTerm
+    pathTerm
       { $1 }
-  | SUCC atomicTerm
+  | SUCC pathTerm
       { TmSucc $2 }
-  | PRED atomicTerm
+  | PRED pathTerm
       { TmPred $2 }
-  | ISZERO atomicTerm
+  | ISZERO pathTerm
       { TmIsZero $2 }
-  | CONCAT atomicTerm atomicTerm
+  | CONCAT pathTerm pathTerm
       { TmConcat ($2, $3) }
-/*  | CONS LSQUARE ty RSQUARE atomicTerm atomicTerm
+  | CONS LSQUARE ty RSQUARE pathTerm pathTerm
       { TmCons ($3, $5, $6) }
-  | ISNIL LSQUARE ty RSQUARE atomicTerm
+  | ISNIL LSQUARE ty RSQUARE pathTerm
       { TmIsNil ($3, $5) }
-  | HEAD LSQUARE ty RSQUARE atomicTerm
+  | HEAD LSQUARE ty RSQUARE pathTerm
       { TmHead ($3, $5) }
-  | TAIL LSQUARE ty RSQUARE atomicTerm
-      { TmTail ($3, $5) } */
-  | appTerm atomicTerm
+  | TAIL LSQUARE ty RSQUARE pathTerm
+      { TmTail ($3, $5) }
+  | appTerm pathTerm
       { TmApp ($1, $2) }
+
+pathTerm :
+    pathTerm DOT STRINGV
+      { TmProj ($1, $3) }
+  | pathTerm DOT INTV
+      { TmProj ($1, string_of_int $3) }
+  | atomicTerm
+      { $1 }
 
 atomicTerm :
     LPAREN term RPAREN
@@ -112,16 +113,14 @@ atomicTerm :
             0 -> TmZero
           | n -> TmSucc (f (n-1))
         in f $1 }
-  | STRING
+  | STRV
       { TmString $1 }
   | LCURLY tupleFields RCURLY
       { TmTuple $2 }
   | LCURLY recordFields RCURLY
   	  { TmRecord $2 }
-/*  | LSQUARE listFields RSQUARE
-        { TmList $2 }
   | NIL LSQUARE ty RSQUARE
-      { TmNil $3 } */
+      { TmNil $3 }
 
 tupleFields :
     term
@@ -144,19 +143,7 @@ notEmptyRecordFields :
 notEmptyRecordField :
     STRINGV EQ term
       { ($1, $3) }
-/*
-listFields :
-    // Empty
-      { [] }
-  | notEmptyListFields
-      { $1 }
 
-notEmptyListFields :
-    term
-      { [$1] }
-  | term COMMA notEmptyListFields
-      { $1 :: $3 }
-*/
 
 ty :
     atomicTy
@@ -173,7 +160,34 @@ atomicTy :
       { TyNat }
   | STRING
       { TyString }
+  | LCURLY tupleFieldTypes RCURLY
+      { TyTuple $2 }
+  | LCURLY recordFieldTypes RCURLY
+      { TyRecord $2 }
   | UNIT
         { TyUnit }
-/*  | LIST LSQUARE ty RSQUARE
-      { TyList $3 } */
+  | LIST LSQUARE ty RSQUARE
+      { TyList $3 }
+
+tupleFieldTypes :
+    ty
+      { [$1] }
+  | ty COMMA tupleFieldTypes
+      { $1 :: $3 }
+
+recordFieldTypes :
+    /* empty */
+      { [] }
+  | notEmptyRecordFieldTypes
+      { $1 }
+
+notEmptyRecordFieldTypes :
+    notEmptyRecordFieldType
+      { [$1] }
+  | notEmptyRecordFieldType COMMA notEmptyRecordFieldTypes
+      { $1 :: $3 }
+
+notEmptyRecordFieldType :
+    STRINGV COLON ty
+      { ($1, $3) }
+

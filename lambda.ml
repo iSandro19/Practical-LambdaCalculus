@@ -1,4 +1,4 @@
-k(* TYPE DEFINITIONS *)
+(* TYPE DEFINITIONS *)
 
 type ty =
     TyBool
@@ -7,7 +7,7 @@ type ty =
   | TyString
   | TyTuple of ty list
   | TyRecord  of (string * ty) list
-(*  | TyList of ty *)
+  | TyList of ty
   | TyUnit
 ;;
 
@@ -29,13 +29,12 @@ type term =
   | TmTuple of term list
   | TmRecord of (string * term) list
   | TmProj of term * string
-(*  | TmNil of ty
+  | TmNil of ty
   | TmCons of ty * term * term
   | TmIsNil of ty * term
   | TmHead of ty * term
-  | TmTail of ty * term *)
+  | TmTail of ty * term
   | TmUnit
-(*  | TmList of term list *)
 ;;
 
 type 'a context =
@@ -72,13 +71,13 @@ let rec string_of_ty ty = match ty with (*Para declarar tipos nuevos*)
   | TyString ->
       "String"
   | TyTuple tys ->
-      "{" ^ String.concat " * " (List.map string_of_ty tys) ^ "}"
+      "{" ^ String.concat ", " (List.map string_of_ty tys) ^ "}"
   | TyRecord fields ->
       "{" ^ String.concat ", " (List.map (fun (l, ty) -> l ^ ":" ^ string_of_ty ty) fields) ^ "}"
   | TyUnit ->
       "Unit"
-(*  | TyList ty ->
-      "[" ^ string_of_ty ty ^ "]" *)
+  | TyList ty ->
+      "List[" ^ string_of_ty ty ^ "]"
 ;;
 
 exception Type_error of string
@@ -188,7 +187,7 @@ let rec typeof tctx tm = match tm with (* Reglas de tipado *)
           _ -> raise (Type_error ("label " ^ s ^ " not found ")))
       | _ -> raise (Type_error "tuple or record type expected"))
 
-(*    (* T-Nil *)
+    (* T-Nil *)
   | TmNil tyT ->
       TyList tyT
 
@@ -214,16 +213,9 @@ let rec typeof tctx tm = match tm with (* Reglas de tipado *)
       if typeof tctx t1 = TyList tyT then TyList tyT
       else raise (Type_error "argument of tail is not a list")
 
-    (* T-List *)
-  | TmList field ->
-      let tyT = typeof tctx (List.hd field) in
-      List.iter (fun t -> if typeof tctx t <> tyT then raise (Type_error "elements of list have different types")) field;
-      TyList tyT
-*)
     (* T-Unit *)
   | TmUnit ->
       TyUnit
-
 ;;
 
 (* TERMS MANAGEMENT (EVALUATION) *)
@@ -275,7 +267,7 @@ let rec free_vars tm = match tm with
     List.fold_left (fun fv (lb, ti) -> lunion (free_vars ti) fv) [] fields
   | TmProj (t, lb) ->
     free_vars t
-(*  | TmNil tyT ->
+  | TmNil tyT ->
     []
   | TmCons (tyT, t1, t2) ->
     lunion (free_vars t1) (free_vars t2)
@@ -285,8 +277,6 @@ let rec free_vars tm = match tm with
     free_vars t1
   | TmTail (tyT, t1) ->
     free_vars t1
-  | TmList fields ->
-    List.fold_left (fun fv ti -> lunion (free_vars ti) fv) [] fields *)
 ;;
 
 let rec fresh_name x l =
@@ -338,7 +328,7 @@ let rec subst x s tm = match tm with
       TmRecord (List.map (fun (lb, ti) -> (lb, subst x s ti)) fields)
   | TmProj (t, lb) ->
       TmProj (subst x s t, lb)
-(*  | TmNil tyT ->
+  | TmNil tyT ->
       TmNil tyT
   | TmCons (tyT, t1, t2) ->
       TmCons (tyT, subst x s t1, subst x s t2)
@@ -348,8 +338,6 @@ let rec subst x s tm = match tm with
       TmHead (tyT, subst x s t1)
   | TmTail (tyT, t1) ->
       TmTail (tyT, subst x s t1)
-  | TmList fields ->
-      TmList (List.map (fun ti -> subst x s ti) fields) *)
   | TmUnit ->
     TmUnit
 ;;
@@ -456,14 +444,14 @@ let rec eval1 vctx tm = match tm with
   | TmVar s ->
       getbinding vctx s
 
-    (*E-String*)
-  | TmString _ ->
-      raise NoRuleApplies
-
     (*E-ConcatString*)
   | TmConcat (TmString s1, TmString s2) ->
       TmString (s1 ^ s2)
-  
+
+  | TmConcat (TmString s1, t2) ->
+      let t2' = eval1 vctx t2 in
+      TmConcat (TmString s1, t2')
+
     (*E-Concat*)
   | TmConcat (t1, t2) ->
       let t1' = eval1 vctx t1 in
@@ -473,7 +461,6 @@ let rec eval1 vctx tm = match tm with
   | TmTuple fields ->
       let rec eval_fields fields = match fields with
           [] -> raise NoRuleApplies
-        | [t] when isval t -> raise NoRuleApplies
         | t::ts when isval t -> let ts' = eval_fields ts in t::ts'
         | t::ts -> let t' = eval1 vctx t in t'::ts
       in
@@ -483,12 +470,24 @@ let rec eval1 vctx tm = match tm with
   | TmRecord fields ->
       let rec eval_fields fields = match fields with
           [] -> raise NoRuleApplies
-        | [(l,t)] when isval t -> raise NoRuleApplies
         | (l,t)::ts when isval t -> let ts' = eval_fields ts in (l,t)::ts'
         | (l,t)::ts -> let t' = eval1 vctx t in (l,t')::ts
       in
       TmRecord (eval_fields fields)
-  
+
+    (* E-ProjTuple *)
+  | TmProj (TmTuple fields as v1, lb) when isval v1 ->
+      List.nth fields (int_of_string lb - 1)
+
+    (* E-ProjRcd *)
+  | TmProj (TmRecord fields as v1, lb) when isval v1 ->
+      List.assoc lb fields
+
+    (* E-Proj *)
+  | TmProj (t1, lb) ->
+      let t1' = eval1 vctx t1 in
+      TmProj (t1', lb)
+
   | _ ->
       raise NoRuleApplies
 ;;
@@ -546,15 +545,7 @@ let rec string_of_term = function
   | TmRecord fields ->
       "{" ^ String.concat ", " (List.map (fun (s, t) -> s ^ "=" ^ string_of_term t) fields) ^ "}"
   | TmProj (t, s) ->
-    match t with
-      TmTuple fields ->
-        string_of_term (List.nth fields (int_of_string s - 1))
-    | TmRecord fields ->
-        string_of_term (List.assoc s fields)
-    | var -> 
-        string_of_term var
-(*  | TmList fields ->
-    "[" ^ String.concat ", " (List.map string_of_term fields) ^ "]" *)
+      string_of_term t ^ "." ^ s
 ;;
 
 let execute (vctx, tctx) = function

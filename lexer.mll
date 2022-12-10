@@ -19,11 +19,17 @@ rule token = parse
   | "letrec"    { LETREC }
   | "in"        { IN }
   | "concat"    { CONCAT }
-  | "fst"       { FST }
-  | "snd"       { SND }
-  | "Unit"      { UNIT }
+  | "nil"       { NIL }
+  | "cons"      { CONS }
+  | "isnil"     { ISNIL }
+  | "head"      { HEAD }
+  | "tail"      { TAIL }
+  | "unit"      { UNITV }
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
+  | "String"    { STRING }
+  | "List"      { LIST }
+  | "Unit"      { UNIT }
   | '('         { LPAREN }
   | ')'         { RPAREN }
   | '{'         { LCURLY }
@@ -38,6 +44,6 @@ rule token = parse
   | "->"        { ARROW }
   | ['0'-'9']+  { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | ['a'-'z']['a'-'z' '_' '0'-'9']* { STRINGV (Lexing.lexeme lexbuf) }
-  | '"'[^'"' ';' '\n']*'"'          { STRING (String.sub (Lexing.lexeme lexbuf) 1 ((String.length (Lexing.lexeme lexbuf))-2))}
+  | '"'[^'"' ';' '\n']*'"'          { STRV (String.sub (Lexing.lexeme lexbuf) 1 ((String.length (Lexing.lexeme lexbuf))-2))}
   | eof         { EOF }
   | _           { raise Lexical_error } 
