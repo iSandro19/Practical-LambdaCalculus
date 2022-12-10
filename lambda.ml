@@ -1,4 +1,4 @@
-(* TYPE DEFINITIONS *)
+k(* TYPE DEFINITIONS *)
 
 type ty =
     TyBool
