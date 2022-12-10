@@ -54,7 +54,7 @@
 s :
     STRINGV EQ term EOF
       { Bind ($1, $3) }
-    | term EOF
+  | term EOF
       { Eval $1 }
 
 term :
@@ -68,6 +68,10 @@ term :
       { TmLetIn ($2, $4, $6) }
   | LETREC STRINGV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix (TmAbs ($2, $4, $6)), $8) }
+  | UNITV
+      { TmUnit }
+  | term SEMICOLON term
+      { TmApp (TmAbs ("x", TyUnit, $3), $1) }
 
 appTerm :
     pathTerm
@@ -165,7 +169,7 @@ atomicTy :
   | LCURLY recordFieldTypes RCURLY
       { TyRecord $2 }
   | UNIT
-        { TyUnit }
+      { TyUnit }
   | LIST LSQUARE ty RSQUARE
       { TyList $3 }
 

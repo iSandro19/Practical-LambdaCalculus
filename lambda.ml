@@ -488,8 +488,42 @@ let rec eval1 vctx tm = match tm with
       let t1' = eval1 vctx t1 in
       TmProj (t1', lb)
 
+    (* E-IsNil *)
+  | TmIsNil (tyT, t1) ->
+  	  let t1' = eval1 vctx t1 in
+        if t1' = TmNil tyT then
+          TmTrue
+        else
+          TmFalse
+
+    (* E-Cons *)
+  | TmCons (tyT, t1, t2) ->
+      let t1' = eval1 vctx t1 in
+      if isval t1' then
+        TmCons (tyT, t1', t2)
+      else
+        raise (Type_error "TmCons error")
+
+    (* E-IsHead *)
+  | TmHead (tyT, t1) ->
+      let t1' = eval1 vctx t1 in 
+      if t1' = TmNil tyT then
+        raise (Type_error "head of empty list")
+      else TmTrue
+
+    (* E-Tail *)
+  | TmTail (tyT, t1) ->
+      let t1' = eval1 vctx t1 in 
+      if t1'= TmNil tyT then
+        raise (Type_error "head of empty list")
+      else TmTrue
+
+    (* E-Unit *)
+  | TmUnit ->
+      TmUnit
+
   | _ ->
-      raise NoRuleApplies
+    raise NoRuleApplies
 ;;
 
 let apply_ctx ctx tm =
@@ -546,6 +580,16 @@ let rec string_of_term = function
       "{" ^ String.concat ", " (List.map (fun (s, t) -> s ^ "=" ^ string_of_term t) fields) ^ "}"
   | TmProj (t, s) ->
       string_of_term t ^ "." ^ s
+  | TmNil t1 ->
+      "[]"
+  | TmCons (tyT, t1, t2) ->
+      string_of_term t1 ^ "::" ^ string_of_term t2
+  | TmHead (t1, t2) ->
+      "head " ^ "(" ^ string_of_term t2 ^ ")"
+  | TmTail (t1, t2) ->
+      "tail " ^ "(" ^ string_of_term t2 ^ ")"
+  | TmIsNil (t1, t2) ->
+      "isnil " ^ "(" ^ string_of_term t2 ^ ")"
 ;;
 
 let execute (vctx, tctx) = function

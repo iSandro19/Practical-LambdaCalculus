@@ -56,26 +56,33 @@ concat "Hello " "World!";;
 
 "Pares";;
 par1 = {"asd", {true, 1}};;
-fst par1;;
-snd par1;;
+par1.1;;
+par1.2;;
 
 "Tuplas";;
-tupla1 = {true, 1, "asd"};;
-fst tupla1;;
-snd tupla1;;
+tupla1 = {true, 1, {"asd", false}};;
+tupla1.1;;
 tupla1.3;;
+tupla1.3.2;;
 
 "Registros";;
 registro1 = {a=true, b=1, c={"asd", "fgh", {z=true, x=false}}};;
 registro1.a;;
-registro1.b;;
 registro1.c;;
+registro1.c.3.z;;
 
 "Listas";;
-lista1 = [1, 2, 3, 4];;
-hd lista1;;
-tl lista1;;
-isempty lista1;;
+empty = nil [Nat];;
+one = cons [Nat] 1 empty;;
+two = cons [Nat] 2 one;;
+head [Nat] two;;
+tail [Nat] two;;
+isnil [Nat] empty;;
+isnil [Nat] one;;
+
+length = true;;
+append = true;; 
+map = true;;
 
 "Unit";;
 unit;;
