@@ -1,3 +1,4 @@
+(* TYPE DEFINITIONS *)
 type ty =
     TyBool
   | TyNat

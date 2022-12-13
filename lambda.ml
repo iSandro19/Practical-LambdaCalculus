@@ -1,5 +1,4 @@
 (* TYPE DEFINITIONS *)
-
 type ty =
     TyBool
   | TyNat
@@ -355,6 +354,8 @@ let rec isval tm = match tm with
   | TmString _ -> true
   | TmTuple fields -> List.for_all (fun ti -> isval ti) fields
   | TmRecord fields -> List.for_all (fun (lb, ti) -> isval ti) fields
+  | TmNil _ -> true
+  | TmCons (_, v1, v2) -> isval v1 && isval v2
   | TmUnit -> true
   | t when isnumericval t -> true
   | _ -> false
@@ -504,23 +505,23 @@ let rec eval1 vctx tm = match tm with
       else
         raise (Type_error "TmCons error")
 
-    (* E-IsHead *)
+    (* E-ConsHead *)
+  | TmHead (_, TmCons(_, v1, _)) when isval v1 ->
+      v1
+
+    (* E-Head *)
   | TmHead (tyT, t1) ->
       let t1' = eval1 vctx t1 in 
-      if t1' = TmNil tyT then
-        raise (Type_error "head of empty list")
-      else TmTrue
+        TmHead(tyT, t1')
+
+    (* E-ConsTail *)
+  | TmTail (_, TmCons(_, _, v2)) when isval v2 ->
+      v2
 
     (* E-Tail *)
   | TmTail (tyT, t1) ->
       let t1' = eval1 vctx t1 in 
-      if t1'= TmNil tyT then
-        raise (Type_error "head of empty list")
-      else TmTrue
-
-    (* E-Unit *)
-  | TmUnit ->
-      TmUnit
+        TmTail(tyT, t1')
 
   | _ ->
     raise NoRuleApplies
@@ -543,7 +544,7 @@ let rec string_of_term = function
   | TmFalse ->
       "false"
   | TmUnit ->
-    "unit"
+      "unit"
   | TmIf (t1,t2,t3) ->
       "if " ^ "(" ^ string_of_term t1 ^ ")" ^
       " then " ^ "(" ^ string_of_term t2 ^ ")" ^
@@ -551,7 +552,7 @@ let rec string_of_term = function
   | TmZero ->
       "0"
   | TmSucc t ->
-     let rec f n t' = match t' with
+      let rec f n t' = match t' with
           TmZero -> string_of_int n
         | TmSucc s -> f (n+1) s
         | _ -> "succ " ^ "(" ^ string_of_term t ^ ")"

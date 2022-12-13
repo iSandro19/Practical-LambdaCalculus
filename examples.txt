@@ -80,9 +80,9 @@ tail [Nat] two;;
 isnil [Nat] empty;;
 isnil [Nat] one;;
 
-length = true;;
-append = true;; 
-map = true;;
+letrec lenght : List[Nat] -> Nat =
+  lambda l : List[Nat]. if isnil l then 0 else succ (lenght (tail [Nat] l)) in
+lenght two;;
 
 "Unit";;
 unit;;
