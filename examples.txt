@@ -19,6 +19,7 @@ else false;;
 letrec sum : Nat -> Nat -> Nat =
   lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
 sum 10 5;;
+
 letrec prod : Nat -> Nat -> Nat =
   lambda n : Nat. lambda m : Nat.
     letrec sum : Nat -> Nat -> Nat =
@@ -27,6 +28,7 @@ letrec prod : Nat -> Nat -> Nat =
       if iszero n then 0 else sum (m) (prod (pred n) m)
   in
     prod 10 5;;
+
 letrec fib : Nat -> Nat =
   letrec sum : Nat -> Nat -> Nat =
     lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m)
@@ -34,6 +36,7 @@ letrec fib : Nat -> Nat =
     lambda n : Nat. if iszero n then 0 else if (iszero (pred n)) then 1 else sum (fib (pred n)) (fib (pred (pred n)))
 in
     fib 10;;
+
 letrec fact : Nat -> Nat =
   letrec sum : Nat -> Nat -> Nat =
     lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m)
@@ -84,6 +87,22 @@ lenght = letrec aux : (List[Nat]) -> (Nat -> Nat) = L l:List[Nat]. L n:Nat.
   if isnil[Nat] l then n else aux (tail[Nat] l) (succ n)
 in
   L l:List[Nat]. aux l 0;;
+
+append = letrec aux : (List[Nat]) -> ((List[Nat]) -> (List[Nat])) =
+  lambda la : List[Nat]. lambda lb : List[Nat].
+    if isnil[Nat] la
+      then lb
+    else cons[Nat] (head[Nat] la) (aux (tail[Nat] la) lb)
+in
+  aux;;
+
+map = letrec aux : (Nat -> Nat) -> ((List[Nat]) -> (List[Nat])) =
+  lambda f : Nat -> Nat. lambda l : List[Nat].
+    if isnil[Nat] l
+      then l
+    else cons[Nat] (f (head[Nat] l)) (aux f (tail[Nat] l))
+in
+  aux;;
 
 "Unit";;
 unit;;
