@@ -80,9 +80,10 @@ tail [Nat] two;;
 isnil [Nat] empty;;
 isnil [Nat] one;;
 
-letrec lenght : List[Nat] -> Nat =
-  lambda l : List[Nat]. if isnil l then 0 else succ (lenght (tail [Nat] l)) in
-lenght two;;
+lenght = letrec aux : (List[Nat]) -> (Nat -> Nat) = L l:List[Nat]. L n:Nat.
+  if isnil[Nat] l then n else aux (tail[Nat] l) (succ n)
+in
+  L l:List[Nat]. aux l 0;;
 
 "Unit";;
 unit;;
